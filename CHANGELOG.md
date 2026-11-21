@@ -34,7 +34,7 @@
 - What changed: deleted synthetic generator, simulated models and old tests. Added `src/rules.py` (free parser with arithmetic checks), `src/llm.py` (Groq + Mercury client with token-aware rate limiter), rewrote `src/router.py` and `src/run.py`, new tests. PRD.md, PLAN.md, README.md rewritten.
 - Why: real documents arrived (`resources/candidate`): budget 2,100, 5-field schema, OCR noise, email threads with decoy amounts, no answer key.
 - Decisions: Gemini dropped (Pro quota 0, Flash 404/503/timeouts). Groq `gpt-oss-20b` as cheap was throttled at 8,000 tokens/min (first full run hit the 540 s cutoff with 74 of ~121 cheap calls done) and mislabelled a thread email, so cheap = `mercury-3`, expensive = `gpt-oss-120b`.
-- Bugs found and fixed: (a) regex backreference corrupted by shell escaping; (b) OCR decimal comma `123,000,00` parsed as 12,300,000; (c) `snap_names` merged LLC/Inc variants and changed 23 counterparties wrongly, found by checking outputs against the text; now legal-suffix aware; (d) no-op stop condition from the old router.
+- Bugs found and fixed: (a) regex backreference corrupted by shell escaping; (b) OCR decimal comma `123,000,00` parsed as 12,300,000; (c) `snap_names` merged LLC/Inc variants and changed 23 counterparties wrongly, found by checking outputs against the text; now legal-suffix aware; (d) no-op stop condition from the old router; (e) word-level name snapping added for OCR slips such as "Vontage" -> "Vantage" (legal suffixes are never merged).
 - How to verify: `python -m pytest -q` (14 pass); `python -m src.run`.
 - Result: 817 units, 126 s, 279/300 docs confirmed by two sources, rules-vs-cheap agreement 99.9%. Accuracy is estimated (no key); grounding check passed for all amounts, references and types; 15-doc hand audit and 26 arbitrated docs correct.
 
@@ -45,10 +45,16 @@
 - What changed: `resources/candidate/*` -> `data/` (documents.jsonl, TASK_RULES.txt, problem-statement.pdf); `output.jsonl`, `report.json` -> `results/`; PRD.md, PLAN.md -> `docs/`. Default paths in `src/run.py` and the corpus test updated; README links and layout section updated.
 - Why: clearer structure (input / code / results / docs).
 - How to verify: `python -m pytest -q` and `python -m src.run` (writes `results/`).
-- Result: see below. Vercel: not connected (no CLI, no tool, no GitHub deployments or webhooks found); not deployed, since this is a batch CLI.
+- Result: 14 tests pass. Vercel: not connected (no CLI, no tool, no GitHub deployments or webhooks found); not deployed, since this is a batch CLI.
 
 ## [10] - Static results page for Vercel
 - What changed: added `public/index.html` (single self-contained page; fetches `report.json`, shows metrics, run details, searchable per-document table, approach; clear message if report is missing or empty), `scripts/export_site.py` (copies `results/report.json` and `results/output.jsonl` into `public/`), `vercel.json` (`outputDirectory: public`, `cleanUrls: true`, no build command). README gets a "Live demo" section and deploy steps.
 - Why: user asked for a Vercel-hostable results page. Page uses textContent only (no HTML injection from data).
 - How to verify: `python scripts/export_site.py` then `python -m http.server -d public` and open http://localhost:8000.
 - Result: checked in Chrome against the local server: page showed 817 / 2,100 units, 126.1 s, 97.4% expected accuracy (labelled an estimate), 279 / 300 confirmed by 2+ sources, and 300 document rows, all read from the exported files. Not yet deployed: Vercel import is a manual step (no Vercel access from this session).
+
+## [11] - Documentation refresh
+- What changed: README (27 arbitrations, word-level name snapping, export step), docs/PRD.md and docs/PLAN.md (current paths, static page, definition of done), CHANGELOG [7] and [9] corrected.
+- Why: bring every file in line with the final state (real data, Mercury + Groq, `results/`, `public/`).
+- How to verify: `python -m pytest -q` (14 pass); `git status` clean.
+- Result: final run on file: 817 of 2,100 units, 126.1 s, 279/300 docs confirmed by two sources, expected accuracy ~97.4% (estimate, no answer key). Known gaps: not deployed to Vercel (manual import), accuracy not measured against a key, pip-audit not run.

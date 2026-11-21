@@ -10,10 +10,10 @@ Cheap LLM on everything, then escalate by confidence (the original plan). Reject
 Python 3.12, stdlib only (urllib) plus pytest. Groq and Mercury via OpenAI-compatible HTTP.
 
 ## Structure
-`src/` (rules, llm, router, run) | `tests/` | `data/` (input) | `results/` (output) | `docs/`
+`src/` (rules, llm, router, run) | `tests/` | `data/` (input) | `results/` (output) | `docs/` | `public/` + `scripts/export_site.py` + `vercel.json` (static results page)
 
 ## Risks
 Groq 8,000 tokens/min limit (handled by limiter); Gemini unusable on free tier; no answer key (accuracy is estimated); spec ambiguity on which date/total.
 
 ## Definition of done
-output.jsonl for 300 docs, units <= 2,100, time < 10 min, tests pass, README with design note, pushed.
+`results/output.jsonl` for 300 docs, units <= 2,100, time < 10 min, tests pass, README with design note, pushed. Static results page ready for Vercel (deploy is a manual import).

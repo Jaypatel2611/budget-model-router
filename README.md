@@ -4,13 +4,13 @@ Routes 300 real business documents (invoices, contracts, emails) between a free 
 
 ## Models picked and why
 - **Cheap: `mercury-3`** (Inception Labs diffusion LLM). Very fast, no throttling in testing (40 calls in 8 s). It also got a thread email right where Groq `gpt-oss-20b` did not.
-- **Expensive: `openai/gpt-oss-120b`** on Groq. Larger and more accurate. Free tier allows about 10 calls a minute, which is enough for the ~26 arbitrations.
+- **Expensive: `openai/gpt-oss-120b`** on Groq. Larger and more accurate. Free tier allows about 10 calls a minute, which is enough for the 27 arbitrations.
 
 ## Approach
 1. **Rules (free, `src/rules.py`)** parse every document and self-check (invoice subtotal + tax = total; instalments x count = total; PO appears twice in emails). Handles OCR noise (`Ju1y`, `123,000,00`, `ond`). Verifies 278 of 300.
 2. **Cheap model cross-checks** every document the rules verified or partly parsed (1 unit each, independent second opinion).
 3. **Expensive model arbitrates** documents the rules could not verify (22 damaged scans, sent straight to it) and any rules-vs-cheap disagreement. Budget is enforced by a ledger; failed calls are refunded (not charged).
-4. **Final value = majority vote** (expensive wins ties). Company names are snapped to the corpus spelling when only an OCR slip differs; names that differ in legal suffix (LLC vs Inc) are kept distinct.
+4. **Final value = majority vote** (expensive wins ties). Company names are snapped to the corpus spelling when only an OCR slip differs; names that differ in legal suffix (LLC vs Inc) are kept distinct. A rare misspelled word (e.g. "Vontage") is also snapped to a common word one OCR slip away ("Vantage").
 5. Quoted email history is stripped before LLM calls (decoy amounts, fewer tokens).
 
 ## Run
@@ -20,6 +20,7 @@ pip install -r requirements.txt
 # .env (git-ignored) needs MERCURY_API_KEY and GROQ_API_KEY
 python -m src.run          # writes results/output.jsonl and results/report.json
 python -m pytest -q        # 14 offline tests, no network
+python scripts/export_site.py   # refresh the static site data in public/
 ```
 
 ## Results (real run on the 300 documents, see `results/report.json`)
