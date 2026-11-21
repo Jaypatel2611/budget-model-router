@@ -64,3 +64,9 @@
 - Why: Vercel's build (commit 84302bf) auto-detected Python from the root `requirements.txt` and demanded an app entrypoint. This is a static site.
 - How to verify: redeploy on Vercel; the build should publish `public/` only. Local: `python -m pytest -q`.
 - Result: 14 tests pass locally. The Vercel build itself was NOT run from here (no Vercel access), so the fix is untested until you redeploy.
+
+## [13] - Vercel deployment confirmed
+- What changed: README "Live demo" now links the live site https://budget-model-router.vercel.app/.
+- Why: the redeploy after [12] succeeded (reported by the user); the fix worked.
+- How to verify: open the URL; `curl https://budget-model-router.vercel.app/report.json`.
+- Result: see the commit; the site serves the exported report and per-document table.

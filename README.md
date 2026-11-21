@@ -51,7 +51,7 @@ python scripts/export_site.py   # refresh the static site data in public/
 Links: [PRD](docs/PRD.md) | [PLAN](docs/PLAN.md) | [CHANGELOG.md](CHANGELOG.md)
 
 ## Live demo
-A static results page (`public/index.html`) reads `public/report.json` and `public/output.jsonl` and shows the key metrics, run details and a searchable per-document table. No build step, no framework. Live URL: add after the first Vercel deploy (not deployed yet).
+A static results page (`public/index.html`) reads `public/report.json` and `public/output.jsonl` and shows the key metrics, run details and a searchable per-document table. No build step, no framework. **Live URL: https://budget-model-router.vercel.app/**
 
 Preview locally: `python -m http.server -d public` then open http://localhost:8000.
 
