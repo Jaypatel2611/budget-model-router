@@ -26,11 +26,11 @@ python -m pytest -q        # 14 offline tests, no network
 ## Results (real run on the 300 documents, see `report.json`)
 | | value |
 |---|---|
-| Units spent | ~800 of 2,100 (278 cheap + 26 expensive calls) |
-| Time, first to last call | ~122 s (limit 600 s) |
+| Units spent | 817 of 2,100 (277 cheap + 27 expensive calls) |
+| Time, first to last call | 126 s (limit 600 s) |
 | Documents confirmed by two sources | 279 of 300 |
 | Rules vs cheap agreement | 99.9% of fields |
-| Expected accuracy | ~97% (see caveat) |
+| Expected accuracy | ~97.4% (see caveat) |
 
 **Accuracy caveat:** no answer key was provided, so accuracy is *estimated*: fields confirmed by two independent sources are assumed 98% right, others lower. Independent checks I ran: every amount, reference and doc type is grounded in its document; a 15-document hand audit and the 26 arbitrated documents were all correct. A bug found this way (merging LLC/Inc names) was fixed.
 

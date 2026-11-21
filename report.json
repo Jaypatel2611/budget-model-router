@@ -1,0 +1,21 @@
+{
+  "units_spent": 817,
+  "budget": 2100,
+  "cheap_calls": 277,
+  "expensive_calls": 27,
+  "time_first_to_last_call_s": 126.1,
+  "total_runtime_s": 126.3,
+  "expected_accuracy": 0.9738,
+  "rules_vs_cheap_agreement_on_clean_audit": 0.999,
+  "docs_rules_only": 0,
+  "docs_confirmed_by_two_sources": 279,
+  "rules_checks_passed": 278,
+  "field_support": {
+    "2": 1451,
+    "1": 33,
+    "3": 16
+  },
+  "cheap_model": "mercury-3",
+  "expensive_model": "openai/gpt-oss-120b",
+  "documents": 300
+}
