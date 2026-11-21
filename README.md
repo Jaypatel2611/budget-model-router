@@ -1,53 +1,51 @@
 # budget-model-router
 
-Route 300 business documents (invoices, contracts, emails) between a **cheap** LLM (1 cost unit) and an **expensive** LLM (20 units) so that 92%+ of extracted fields are correct, inside a cost budget and in under 10 minutes.
+Routes 300 real business documents (invoices, contracts, emails) between a free rules parser, a **cheap** LLM (1 unit) and an **expensive** LLM (20 units) under a 2,100-unit budget and a 10-minute limit. Output: `output.jsonl` (spec format) and `report.json`.
 
-> **Read this first: what is real and what is simulated.**
-> The 300 documents were not supplied and no LLM API key was available. So (1) the documents are **synthetic** (seeded, with gold labels) and (2) the default models are a **deterministic simulation** of a cheap (~87% field accuracy) and an expensive (~98%) model. The accuracy numbers below measure the *router* against that simulation, **not** real LLM quality. A real Anthropic backend (`--backend anthropic`) is implemented but **untested** (no key). See the assumptions in [PRD.md](PRD.md).
+## Models picked and why
+- **Cheap: `mercury-3`** (Inception Labs diffusion LLM). Very fast, no throttling in testing (40 calls in 8 s). It also got a thread email right where Groq `gpt-oss-20b` did not.
+- **Expensive: `openai/gpt-oss-120b`** on Groq. Larger and more accurate. Free tier allows about 10 calls a minute, which is enough for the ~26 arbitrations.
+- Gemini was tried first and dropped: Pro had zero free quota, Flash models returned 404/503/timeouts.
 
 ## Approach
-1. **Cheap model on every document** (cost 1 each).
-2. **Verifier (text only, no gold):** per field, is the value present in the text, is the format valid, and does it sit on the same line as its cue word (`Issue date:`, `Total`, ...). The model's own confidence is added. The result is a risk score per doc.
-3. **Budget-capped escalation:** sort docs by risk and send the riskiest to the expensive model while `spent + 20 <= budget`. Docs whose fields all pass are never escalated. An escalated doc costs 1 + 20 (the cheap attempt is paid too). If the expensive call fails, the cheap answer is kept.
-4. **Expected accuracy** is computed *before* looking at gold, from priors measured on a separate 100-doc dev set (cheap accuracy on fields that pass or fail the verifier; expensive accuracy). Measured accuracy vs gold is reported next to it.
-
-Why: spend is known exactly before the expensive pass, so the budget is a hard guarantee, and money goes where the cheap model is likeliest wrong.
+1. **Rules (free, `src/rules.py`)** parse every document and self-check (invoice subtotal + tax = total; instalments x count = total; PO appears twice in emails). Handles OCR noise (`Ju1y`, `123,000,00`, `ond`). Verifies 278 of 300.
+2. **Cheap model cross-checks** every document the rules verified or partly parsed (1 unit each, independent second opinion).
+3. **Expensive model arbitrates** documents the rules could not verify (22 damaged scans, sent straight to it) and any rules-vs-cheap disagreement. Budget is enforced by a ledger; failed calls are refunded (not charged).
+4. **Final value = majority vote** (expensive wins ties). Company names are snapped to the corpus spelling when only an OCR slip differs; names that differ in legal suffix (LLC vs Inc) are kept distinct.
+5. Quoted email history is stripped before LLM calls (decoy amounts, fewer tokens).
 
 ## Run
 ```
+python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
-python -m src.run                      # sim backend, budget 1800 units, seed 42
-python -m src.run --budget 1200        # tighter budget
-python -m pytest -q                    # 6 tests
-# real models (untested): pip install anthropic; set ANTHROPIC_API_KEY; python -m src.run --backend anthropic
+# .env (git-ignored) needs MERCURY_API_KEY and GROQ_API_KEY
+python -m src.run          # writes output.jsonl and report.json
+python -m pytest -q        # 14 offline tests, no network
 ```
-Outputs: `out/results.jsonl` (per doc: model used, fields, risk) and `out/report.json`.
 
-## Results (real output of `python -m src.run`, seed 42, simulated models)
-| | cost (units) | field accuracy | sim time |
-|---|---|---|---|
-| all cheap | 300 | 87.3% | n/a |
-| all expensive | 6,000 (over budget) | not run (sim error rate is ~2%) | n/a |
-| **router, budget 1800** | **1,800** | **95.2%** (expected 94.1%) | **60 s** (75 docs escalated) |
+## Results (real run on the 300 documents, see `report.json`)
+| | value |
+|---|---|
+| Units spent | ~800 of 2,100 (278 cheap + 26 expensive calls) |
+| Time, first to last call | ~122 s (limit 600 s) |
+| Documents confirmed by two sources | 279 of 300 |
+| Rules vs cheap agreement | 99.9% of fields |
+| Expected accuracy | ~97% (see caveat) |
 
-Budget sweep (same data): 300 -> 87.3% | 900 -> 91.5% | **1200 -> 92.8%** | 1800 -> 95.2% | 3000 -> 98.4% (spent 2,820). The smallest budget meeting 92% here is about 1,200 units. Expected accuracy tracked measured accuracy within ~1 point (slightly pessimistic).
-Time is simulated latency (cheap ~0.6 s, expensive ~8 s per call) on 16 workers. Real wall time of the simulation is ~0.02 s.
+**Accuracy caveat:** no answer key was provided, so accuracy is *estimated*: fields confirmed by two independent sources are assumed 98% right, others lower. Independent checks I ran: every amount, reference and doc type is grounded in its document; a 15-document hand audit and the 26 arbitrated documents were all correct. A bug found this way (merging LLC/Inc names) was fixed.
 
-## Design note: 5M documents / month, with prices and quality changing
-- **Streaming threshold, not batch ranking.** At 5M docs (~2/s) escalate when `risk > t`. A controller adjusts `t` hourly so spend tracks the monthly budget. The batch router here is the same logic with a known queue.
-- **Models are config, not code.** Each model is (backend, cost, latency, priors). A price or model change is a config edit; the router only sees `cost` and `extract()`.
-- **Continuous calibration.** Send ~0.5-1% of traffic to the expensive model (or humans) as a gold sample. Re-estimate priors and verifier precision per doc type weekly and on every model or price change. Alert if expected-vs-measured drift exceeds ~2 points.
-- **Cheap tricks first.** Cache identical and near-duplicate docs, escalate only the failing fields (shorter prompt) instead of the whole doc, and add a mid-tier model so the cascade is cheap -> mid -> expensive.
-- **Throughput and reliability.** Queue plus worker pool with rate-limit-aware backoff, idempotent per-doc results, retries then fallback to the cheap answer, per-tenant spend caps, and no doc text in logs.
-- **Safety net.** Shadow-test any new model on the dev set before routing traffic, and keep the old one as fallback.
+## Design note: 5M documents / month
+- **Rules first, models second.** Regular layouts are parsed for free; models only cross-check and arbitrate. Cost scales with ambiguity, not volume.
+- **Per-document escalation threshold**, adjusted by a controller so monthly spend tracks budget; the ledger here becomes a rolling budget.
+- **Models are config** (endpoint, key, cost, rate limit in `PROVIDERS`). A price or model change is a one-line edit.
+- **Continuous calibration:** send ~1% of traffic to the expensive model or a human as a gold sample; alert when estimated and measured accuracy drift.
+- **Throughput:** per-model token-aware rate limiter, retries with backoff, cheap and expensive lanes run in parallel, idempotent per-document results.
+- **Safety:** shadow-test new models, keep the old as fallback, never log document text.
 
 ## Assumptions and limitations
-- Synthetic, clean, English docs with label-style text. Real scans and PDFs would weaken the verifier (needs OCR and more checks). The verifier had no false positives on dev data, which is optimistic.
-- The budget (1,800 units) is my assumption. The simulation error rates are my choice and were fixed before the first run, not tuned to hit the target.
-- Dev-set priors are noisy (e.g. "flagged field accuracy" = 0.0 from 100 docs).
-- Anthropic backend: untested; model IDs may need updating; one overall confidence per doc.
-
-## Next steps
-Run on real documents with a real key; field-level escalation; a mid-tier model; a learned risk model (logistic regression on verifier features); confidence calibration.
+- Date = invoice date / contract "entered into" date / email Date header. Total = total due / total contract value / final agreed figure. Counterparty = the company that is not Meridian Works Ltd. Reference = invoice no / agreement no / PO. **Ambiguous in the spec**; contract date is the largest risk.
+- Currency is dropped (output is a number). Rules are tuned to this corpus's layouts; other layouts fall to the LLMs.
+- D-152 keeps an OCR-corrupted name (no clean variant exists in the corpus).
+- Not deployed to Vercel: this is a batch CLI with no UI or API.
 
 Links: [PRD.md](PRD.md) | [PLAN.md](PLAN.md) | [CHANGELOG.md](CHANGELOG.md)

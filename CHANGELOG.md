@@ -29,3 +29,14 @@
 
 ## [6] - README
 - What changed: README.md with design note, results and assumptions. DESIGN.md skipped (no UI/API). Nothing skipped for time except pip-audit.
+
+## [7] - Real data changes the plan (replaces [2]-[6] design)
+- What changed: deleted synthetic generator, simulated models and old tests. Added `src/rules.py` (free parser with arithmetic checks), `src/llm.py` (Groq + Mercury client with token-aware rate limiter), rewrote `src/router.py` and `src/run.py`, new tests. PRD.md, PLAN.md, README.md rewritten.
+- Why: real documents arrived (`resources/candidate`): budget 2,100, 5-field schema, OCR noise, email threads with decoy amounts, no answer key.
+- Decisions: Gemini dropped (Pro quota 0, Flash 404/503/timeouts). Groq `gpt-oss-20b` as cheap was throttled at 8,000 tokens/min (first full run hit the 540 s cutoff with 74 of ~121 cheap calls done) and mislabelled a thread email, so cheap = `mercury-3`, expensive = `gpt-oss-120b`.
+- Bugs found and fixed: (a) regex backreference corrupted by shell escaping; (b) OCR decimal comma `123,000,00` parsed as 12,300,000; (c) `snap_names` merged LLC/Inc variants and changed 23 counterparties wrongly, found by checking outputs against the text; now legal-suffix aware; (d) no-op stop condition from the old router.
+- How to verify: `python -m pytest -q` (14 pass); `python -m src.run`.
+- Result: ~800 units, ~122 s, 279/300 docs confirmed by two sources, rules-vs-cheap agreement 99.9%. Accuracy is estimated (no key); grounding check passed for all amounts, references and types; 15-doc hand audit and 26 arbitrated docs correct.
+
+## [8] - Security and wrap-up
+- Keys only from environment or git-ignored `.env`; never printed. Model JSON validated by `normalise`. Doc text truncated to 6,000 chars, not logged. Not run: pip-audit. Vercel deploy skipped (batch CLI, no UI/API; no Vercel tool available in session).
