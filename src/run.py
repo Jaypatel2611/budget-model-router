@@ -5,13 +5,13 @@ from .llm import Chat
 from .router import route
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--docs", default="resources/candidate/documents.jsonl")
+ap.add_argument("--docs", default="data/documents.jsonl")
 ap.add_argument("--budget", type=int, default=2100, help="units: cheap=1, expensive=20")
 ap.add_argument("--cheap", default="mercury-3")
 ap.add_argument("--expensive", default="openai/gpt-oss-120b")
 ap.add_argument("--audit", type=int, default=300, help="clean docs also sent to the cheap model to measure rules accuracy")
 ap.add_argument("--deadline", type=int, default=540, help="seconds after which no new calls start (limit is 600)")
-ap.add_argument("--out", default=".", help="directory for output.jsonl and report.json")
+ap.add_argument("--out", default="results", help="directory for output.jsonl and report.json")
 a = ap.parse_args()
 
 docs = [json.loads(l) for l in open(a.docs, encoding="utf-8")]

@@ -40,3 +40,9 @@
 
 ## [8] - Security and wrap-up
 - Keys only from environment or git-ignored `.env`; never printed. Model JSON validated by `normalise`. Doc text truncated to 6,000 chars, not logged. Not run: pip-audit. Vercel deploy skipped (batch CLI, no UI/API; no Vercel tool available in session).
+
+## [9] - Repo restructure
+- What changed: `resources/candidate/*` -> `data/` (documents.jsonl, TASK_RULES.txt, problem-statement.pdf); `output.jsonl`, `report.json` -> `results/`; PRD.md, PLAN.md -> `docs/`. Default paths in `src/run.py` and the corpus test updated; README links and layout section updated.
+- Why: clearer structure (input / code / results / docs).
+- How to verify: `python -m pytest -q` and `python -m src.run` (writes `results/`).
+- Result: see below. Vercel: not connected (no CLI, no tool, no GitHub deployments or webhooks found); not deployed, since this is a batch CLI.

@@ -1,6 +1,6 @@
 # budget-model-router
 
-Routes 300 real business documents (invoices, contracts, emails) between a free rules parser, a **cheap** LLM (1 unit) and an **expensive** LLM (20 units) under a 2,100-unit budget and a 10-minute limit. Output: `output.jsonl` (spec format) and `report.json`.
+Routes 300 real business documents (invoices, contracts, emails) between a free rules parser, a **cheap** LLM (1 unit) and an **expensive** LLM (20 units) under a 2,100-unit budget and a 10-minute limit. Output: `results/output.jsonl` (spec format) and `results/report.json`.
 
 ## Models picked and why
 - **Cheap: `mercury-3`** (Inception Labs diffusion LLM). Very fast, no throttling in testing (40 calls in 8 s). It also got a thread email right where Groq `gpt-oss-20b` did not.
@@ -19,11 +19,11 @@ Routes 300 real business documents (invoices, contracts, emails) between a free 
 python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
 # .env (git-ignored) needs MERCURY_API_KEY and GROQ_API_KEY
-python -m src.run          # writes output.jsonl and report.json
+python -m src.run          # writes results/output.jsonl and results/report.json
 python -m pytest -q        # 14 offline tests, no network
 ```
 
-## Results (real run on the 300 documents, see `report.json`)
+## Results (real run on the 300 documents, see `results/report.json`)
 | | value |
 |---|---|
 | Units spent | 817 of 2,100 (277 cheap + 27 expensive calls) |
@@ -48,4 +48,14 @@ python -m pytest -q        # 14 offline tests, no network
 - D-152 keeps an OCR-corrupted name (no clean variant exists in the corpus).
 - Not deployed to Vercel: this is a batch CLI with no UI or API.
 
-Links: [PRD.md](PRD.md) | [PLAN.md](PLAN.md) | [CHANGELOG.md](CHANGELOG.md)
+Links: [PRD](docs/PRD.md) | [PLAN](docs/PLAN.md) | [CHANGELOG.md](CHANGELOG.md)
+
+## Repo layout
+```
+src/       rules.py (free parser), llm.py (Groq + Mercury client), router.py (tiers, voting, budget), run.py (CLI)
+tests/     offline tests
+data/      documents.jsonl (input), TASK_RULES.txt, problem-statement.pdf
+results/   output.jsonl (deliverable), report.json (cost, time, accuracy estimate)
+docs/      PRD.md, PLAN.md
+CHANGELOG.md  README.md  requirements.txt
+```

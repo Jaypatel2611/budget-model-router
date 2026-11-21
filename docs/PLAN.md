@@ -10,7 +10,7 @@ Cheap LLM on everything, then escalate by confidence (the original plan). Reject
 Python 3.12, stdlib only (urllib) plus pytest. Groq and Mercury via OpenAI-compatible HTTP.
 
 ## Structure
-`src/rules.py` | `src/llm.py` | `src/router.py` | `src/run.py` | `tests/` | `output.jsonl`, `report.json`
+`src/` (rules, llm, router, run) | `tests/` | `data/` (input) | `results/` (output) | `docs/`
 
 ## Risks
 Groq 8,000 tokens/min limit (handled by limiter); Gemini unusable on free tier; no answer key (accuracy is estimated); spec ambiguity on which date/total.

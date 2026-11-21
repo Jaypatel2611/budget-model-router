@@ -146,7 +146,7 @@ def test_zero_budget_falls_back_to_rules():
 
 
 def test_real_corpus_is_parsed_if_present():
-    p = pathlib.Path("resources/candidate/documents.jsonl")
+    p = pathlib.Path("data/documents.jsonl")
     if p.exists():
         d = [json.loads(l) for l in p.open(encoding="utf-8")]
         assert len(d) == 300 and sum(parse(x["text"])[1] for x in d) >= 250
