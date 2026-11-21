@@ -1,0 +1,3 @@
+pytest>=8
+# optional, only for --backend anthropic:
+# anthropic>=0.40
