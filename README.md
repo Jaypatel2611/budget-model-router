@@ -16,7 +16,7 @@ Routes 300 real business documents (invoices, contracts, emails) between a free 
 ## Run
 ```
 python -m venv .venv && .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 # .env (git-ignored) needs MERCURY_API_KEY and GROQ_API_KEY
 python -m src.run          # writes results/output.jsonl and results/report.json
 python -m pytest -q        # 14 offline tests, no network
@@ -58,7 +58,9 @@ Preview locally: `python -m http.server -d public` then open http://localhost:80
 Deploy to Vercel:
 1. After any new run, refresh the site data: `python scripts/export_site.py`, then commit.
 2. In Vercel: Add New > Project > import `Jaypatel2611/budget-model-router`.
-3. Leave Framework Preset as "Other", clear the Build Command; `vercel.json` already sets `outputDirectory` to `public`.
+3. Leave Framework Preset as "Other"; `vercel.json` sets no framework, no build or install command, and `outputDirectory` to `public`. If Vercel still reports a Python entrypoint error, set Settings > General > Root Directory to `public` and redeploy.
+
+Note: the dependency file is named `requirements-dev.txt` on purpose. A `requirements.txt` in the repo root makes Vercel treat the project as Python and fail with `PYTHON_ENTRYPOINT_NOT_FOUND`.
 4. Deploy. Every push to `main` redeploys.
 
 ## Repo layout
@@ -71,5 +73,5 @@ docs/      PRD.md, PLAN.md
 public/    static results page (index.html) + exported report.json, output.jsonl
 scripts/   export_site.py (copies results/ into public/)
 vercel.json  static deploy config
-CHANGELOG.md  README.md  requirements.txt
+CHANGELOG.md  README.md  requirements-dev.txt
 ```

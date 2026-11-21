@@ -58,3 +58,9 @@
 - Why: bring every file in line with the final state (real data, Mercury + Groq, `results/`, `public/`).
 - How to verify: `python -m pytest -q` (14 pass); `git status` clean.
 - Result: final run on file: 817 of 2,100 units, 126.1 s, 279/300 docs confirmed by two sources, expected accuracy ~97.4% (estimate, no answer key). Known gaps: not deployed to Vercel (manual import), accuracy not measured against a key, pip-audit not run.
+
+## [12] - Fix Vercel build error PYTHON_ENTRYPOINT_NOT_FOUND
+- What changed: renamed `requirements.txt` to `requirements-dev.txt`; `vercel.json` now sets `framework: null`, empty build and install commands, `outputDirectory: public`; README updated (install command, deploy note, Root Directory fallback).
+- Why: Vercel's build (commit 84302bf) auto-detected Python from the root `requirements.txt` and demanded an app entrypoint. This is a static site.
+- How to verify: redeploy on Vercel; the build should publish `public/` only. Local: `python -m pytest -q`.
+- Result: 14 tests pass locally. The Vercel build itself was NOT run from here (no Vercel access), so the fix is untested until you redeploy.
