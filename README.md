@@ -49,6 +49,17 @@ python -m pytest -q        # 14 offline tests, no network
 
 Links: [PRD](docs/PRD.md) | [PLAN](docs/PLAN.md) | [CHANGELOG.md](CHANGELOG.md)
 
+## Live demo
+A static results page (`public/index.html`) reads `public/report.json` and `public/output.jsonl` and shows the key metrics, run details and a searchable per-document table. No build step, no framework. Live URL: add after the first Vercel deploy (not deployed yet).
+
+Preview locally: `python -m http.server -d public` then open http://localhost:8000.
+
+Deploy to Vercel:
+1. After any new run, refresh the site data: `python scripts/export_site.py`, then commit.
+2. In Vercel: Add New > Project > import `Jaypatel2611/budget-model-router`.
+3. Leave Framework Preset as "Other", clear the Build Command; `vercel.json` already sets `outputDirectory` to `public`.
+4. Deploy. Every push to `main` redeploys.
+
 ## Repo layout
 ```
 src/       rules.py (free parser), llm.py (Groq + Mercury client), router.py (tiers, voting, budget), run.py (CLI)
@@ -56,5 +67,8 @@ tests/     offline tests
 data/      documents.jsonl (input), TASK_RULES.txt, problem-statement.pdf
 results/   output.jsonl (deliverable), report.json (cost, time, accuracy estimate)
 docs/      PRD.md, PLAN.md
+public/    static results page (index.html) + exported report.json, output.jsonl
+scripts/   export_site.py (copies results/ into public/)
+vercel.json  static deploy config
 CHANGELOG.md  README.md  requirements.txt
 ```

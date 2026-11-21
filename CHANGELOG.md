@@ -46,3 +46,9 @@
 - Why: clearer structure (input / code / results / docs).
 - How to verify: `python -m pytest -q` and `python -m src.run` (writes `results/`).
 - Result: see below. Vercel: not connected (no CLI, no tool, no GitHub deployments or webhooks found); not deployed, since this is a batch CLI.
+
+## [10] - Static results page for Vercel
+- What changed: added `public/index.html` (single self-contained page; fetches `report.json`, shows metrics, run details, searchable per-document table, approach; clear message if report is missing or empty), `scripts/export_site.py` (copies `results/report.json` and `results/output.jsonl` into `public/`), `vercel.json` (`outputDirectory: public`, `cleanUrls: true`, no build command). README gets a "Live demo" section and deploy steps.
+- Why: user asked for a Vercel-hostable results page. Page uses textContent only (no HTML injection from data).
+- How to verify: `python scripts/export_site.py` then `python -m http.server -d public` and open http://localhost:8000.
+- Result: checked in Chrome against the local server: page showed 817 / 2,100 units, 126.1 s, 97.4% expected accuracy (labelled an estimate), 279 / 300 confirmed by 2+ sources, and 300 document rows, all read from the exported files. Not yet deployed: Vercel import is a manual step (no Vercel access from this session).

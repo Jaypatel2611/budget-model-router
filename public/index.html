@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Router Results</title>
+<style>
+:root{--bg:#f7f7f9;--fg:#1c1d22;--mut:#666b78;--card:#fff;--line:#e2e4ea;--acc:#4b5bd6}
+@media (prefers-color-scheme:dark){:root{--bg:#14151a;--fg:#e8e9ee;--mut:#9a9fae;--card:#1d1f26;--line:#2d303a;--acc:#8a96ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.6rem;margin:0 0 4px}h2{font-size:1.1rem;margin:32px 0 12px}p{margin:0 0 12px}.mut{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card b{display:block;font-size:1.5rem;color:var(--acc)}.card span{font-size:.85rem;color:var(--mut)}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--card)}.scroll{max-height:420px;overflow:auto}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Model Router Under a Budget</h1>
+<p class="mut">Results of the real run on 300 business documents. Numbers are read live from <code>report.json</code>.</p>
+<div id="status" class="msg">Loading results...</div>
+<section id="metrics" hidden>
+<h2>Key metrics</h2><div class="grid" id="cards"></div>
+<h2>Run details</h2><div class="tw"><table id="detail"></table></div>
+<p class="mut" style="margin-top:8px">Accuracy is an estimate: no answer key was provided. Fields confirmed by two independent sources are assumed about 98% correct.</p>
+</section>
+<section id="docs" hidden>
+<h2>Per-document output</h2>
+<div class="bar"><input id="q" placeholder="Search id, counterparty, reference" aria-label="Search"><select id="type" aria-label="Document type"><option value="">All types</option><option>invoice</option><option>contract</option><option>email</option></select><select id="esc" aria-label="Escalation"><option value="">All</option><option value="exp">Sent to expensive model</option></select><span id="count" class="mut"></span></div>
+<div class="tw scroll"><table><thead><tr><th>id</th><th>type</th><th>date</th><th>total</th><th>counterparty</th><th>reference</th><th>cheap</th><th>exp</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<h2>Approach</h2>
+<p>Three tiers. A free rules parser reads every document and checks its own arithmetic. A cheap LLM (<code>mercury-3</code>, 1 unit) cross-checks. An expensive LLM (<code>gpt-oss-120b</code>, 20 units) arbitrates documents the rules could not verify or where sources disagree. Fields are decided by majority vote, and a ledger keeps spend inside the 2,100-unit budget.</p>
+<p class="mut"><a href="https://github.com/Jaypatel2611/budget-model-router">Source on GitHub</a></p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>typeof n==="number"?n.toLocaleString("en-US",{maximumFractionDigits:4}):String(n);
+const card=(v,l)=>{const d=document.createElement("div");d.className="card";const b=document.createElement("b");b.textContent=v;const s=document.createElement("span");s.textContent=l;d.append(b,s);return d};
+function fail(m){$("status").textContent=m}
+async function load(){
+  let r;
+  try{const res=await fetch("report.json",{cache:"no-store"});if(!res.ok)throw new Error(res.status);r=await res.json()}
+  catch(e){return fail("Results not available: report.json is missing or invalid. Run `python -m src.run` then `python scripts/export_site.py`.")}
+  if(!r||typeof r!=="object"||!Object.keys(r).length)return fail("report.json is empty. Run the pipeline and re-export.");
+  $("status").hidden=true;$("metrics").hidden=false;
+  const c=$("cards");
+  if("units_spent"in r)c.append(card(fmt(r.units_spent)+" / "+fmt(r.budget),"units spent / budget"));
+  if("time_first_to_last_call_s"in r)c.append(card(fmt(r.time_first_to_last_call_s)+" s","first to last call (limit 600 s)"));
+  if("expected_accuracy"in r)c.append(card((r.expected_accuracy*100).toFixed(1)+"%","expected accuracy (estimate)"));
+  if("docs_confirmed_by_two_sources"in r)c.append(card(fmt(r.docs_confirmed_by_two_sources)+" / "+fmt(r.documents),"documents confirmed by 2+ sources"));
+  const t=$("detail");
+  for(const [k,v] of Object.entries(r)){const tr=t.insertRow();tr.insertCell().textContent=k;tr.insertCell().textContent=typeof v==="object"?JSON.stringify(v):fmt(v)}
+  try{
+    const txt=await (await fetch("output.jsonl",{cache:"no-store"})).text();
+    const rows=txt.split("\n").filter(Boolean).map(l=>JSON.parse(l));
+    if(!rows.length)return;
+    $("docs").hidden=false;
+    const draw=()=>{const q=$("q").value.toLowerCase(),ty=$("type").value,es=$("esc").value;
+      const f=rows.filter(o=>(!ty||o.doc_type===ty)&&(!es||o.expensive_calls>0)&&(!q||[o.id,o.counterparty,o.reference].join(" ").toLowerCase().includes(q)));
+      const tb=$("rows");tb.replaceChildren();
+      for(const o of f){const tr=tb.insertRow();for(const v of [o.id,o.doc_type,o.date,fmt(o.total_amount),o.counterparty,o.reference,o.cheap_calls,o.expensive_calls])tr.insertCell().textContent=v}
+      $("count").textContent=f.length+" of "+rows.length+" documents"};
+    ["q","type","esc"].forEach(i=>$(i).addEventListener("input",draw));draw();
+  }catch(e){}
+}
+load();
+</script>
+</body>
+</html>
