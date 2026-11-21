@@ -5,7 +5,6 @@ Routes 300 real business documents (invoices, contracts, emails) between a free 
 ## Models picked and why
 - **Cheap: `mercury-3`** (Inception Labs diffusion LLM). Very fast, no throttling in testing (40 calls in 8 s). It also got a thread email right where Groq `gpt-oss-20b` did not.
 - **Expensive: `openai/gpt-oss-120b`** on Groq. Larger and more accurate. Free tier allows about 10 calls a minute, which is enough for the ~26 arbitrations.
-- Gemini was tried first and dropped: Pro had zero free quota, Flash models returned 404/503/timeouts.
 
 ## Approach
 1. **Rules (free, `src/rules.py`)** parse every document and self-check (invoice subtotal + tax = total; instalments x count = total; PO appears twice in emails). Handles OCR noise (`Ju1y`, `123,000,00`, `ond`). Verifies 278 of 300.
